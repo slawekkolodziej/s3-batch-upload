@@ -211,9 +211,10 @@ describe('Uploader', () => {
       spy(s3, "upload");
 
       uploader = new Uploader({
-        localPath: 'test/files/index.html.gz',
+        localPath: 'test/files',
         remotePath: 'fake',
         bucket: 'fake',
+        glob: '**/index.html.gz',
         s3Client: <any>s3,
         accessControlLevel: 'bucket-owner-full-control',
         getMetadata: (file, mime) => {
