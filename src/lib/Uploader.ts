@@ -11,7 +11,7 @@ const chalk = require('chalk');
 const fs = require('fs');
 const mime = require('mime');
 
-type ContentTypeGetter = (file: string, mime: any) => string;
+export type ContentTypeGetter = (file: string, mime: any) => string;
 
 export type Options = {
   bucket: string;
