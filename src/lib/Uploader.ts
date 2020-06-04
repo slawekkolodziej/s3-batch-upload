@@ -11,6 +11,8 @@ const chalk = require('chalk');
 const fs = require('fs');
 const mime = require('mime');
 
+type ContentTypeGetter = (file: string, mime: any) => string;
+
 export type Options = {
   bucket: string;
   localPath: string;
@@ -21,6 +23,7 @@ export type Options = {
   concurrency?: number;
   dryRun?: boolean;
   cacheControl?: string | { [key: string]: string };
+  contentType?: string | ContentTypeGetter | { [key: string]: string };
   s3Client?: S3;
   accessControlLevel?: S3.ObjectCannedACL;
 };
@@ -134,7 +137,7 @@ export default class Uploader {
       Bucket,
       Key: remotePath.replace(/\\/g, '/'),
       Body: body,
-      ContentType: mime.getType(localFilePath),
+      ContentType: this.getContentTypeValue(localFilePath),
       CacheControl: this.getCacheControlValue(localFilePath),
     };
     if (ACL) {
@@ -174,5 +177,30 @@ export default class Uploader {
 
     // return default value
     return '';
+  }
+
+  /**
+   *
+   * @param file Path to a local file, either relative to cwd, or absolute
+   * @return The resolved ContentType value based on the provided settings
+   */
+  public getContentTypeValue(file: string): string {
+    const { contentType } = this.options;
+    if (contentType) {
+      // return single option for all files
+      if (typeof contentType === 'string') {
+        return contentType;
+      }
+      if (typeof contentType === 'function') {
+        return contentType(file, mime);
+      }
+
+      // find match in glob patterns
+      const match = Object.keys(contentType).find(key => minimatch(file, key));
+      return (match && contentType[match]) || '';
+    }
+
+    // return default value
+    return mime.getType(file);
   }
 }

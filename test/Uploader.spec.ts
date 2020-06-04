@@ -117,6 +117,86 @@ describe('Uploader', () => {
 
       (<any>s3.upload).restore();
     });
+
+    it('should upload with proper content-type', async function() {
+      this.timeout(10000);
+
+      const s3 = {
+        upload(_, cb) {
+          cb(null);
+        }
+      };
+      spy(s3, "upload");
+
+      uploader = new Uploader({
+        localPath: 'test/files',
+        remotePath: 'fake',
+        bucket: 'fake',
+        glob: '**/demo.png',
+        s3Client: <any>s3,
+        accessControlLevel: 'bucket-owner-full-control',
+        contentType: 'foo/bar'
+      });
+
+      await uploader.upload();
+
+      const { Body, ...args} = (<any>s3.upload).lastCall.args[0];
+
+
+      expect(args).to.deep.equal({
+        ACL: 'bucket-owner-full-control',
+        Bucket: 'fake',
+        Key: 'fake/demo.png',
+        ContentType: 'foo/bar',
+        CacheControl: '',
+      });
+
+      (<any>expect(Body).to.be.a).ReadableStream;
+
+      (<any>s3.upload).restore();
+    })
+
+    it('should upload with proper content-type when using function', async function() {
+      this.timeout(10000);
+
+      const s3 = {
+        upload(_, cb) {
+          cb(null);
+        }
+      };
+      spy(s3, "upload");
+
+      uploader = new Uploader({
+        localPath: 'test/files',
+        remotePath: 'fake',
+        bucket: 'fake',
+        glob: '**/index.html.gz',
+        s3Client: <any>s3,
+        accessControlLevel: 'bucket-owner-full-control',
+        contentType: (file, mime) => {
+          if (file.endsWith('.gz')) {
+            return mime.getType(file.replace('.gz', ''))
+          }
+          return mime.getType(file);
+        }
+      });
+
+      await uploader.upload();
+
+      const { Body, ...args} = (<any>s3.upload).lastCall.args[0];
+
+      expect(args).to.deep.equal({
+        ACL: 'bucket-owner-full-control',
+        Bucket: 'fake',
+        Key: 'fake/index.html.gz',
+        ContentType: 'text/html',
+        CacheControl: '',
+      });
+
+      (<any>expect(Body).to.be.a).ReadableStream;
+
+      (<any>s3.upload).restore();
+    })
   });
 
   describe('getCacheControlValue', () => {
