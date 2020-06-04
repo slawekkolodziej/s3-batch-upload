@@ -32,7 +32,7 @@ export type Options = {
   contentType?: string | ContentTypeGetter | { [key: string]: string };
   s3Client?: S3;
   accessControlLevel?: S3.ObjectCannedACL;
-  getMetadata?: (file: string) => Metadata;
+  getMetadata?: (file: string, mime: any) => Metadata;
 };
 
 const defaultOptions = {
