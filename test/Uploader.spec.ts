@@ -199,6 +199,57 @@ describe('Uploader', () => {
     })
   });
 
+  describe('upload with metadata', () => {
+    it('should upload with proper metadata', async function() {
+      this.timeout(10000);
+
+      const s3 = {
+        upload(_, cb) {
+          cb(null);
+        }
+      };
+      spy(s3, "upload");
+
+      uploader = new Uploader({
+        localPath: 'test/files/index.html.gz',
+        remotePath: 'fake',
+        bucket: 'fake',
+        s3Client: <any>s3,
+        accessControlLevel: 'bucket-owner-full-control',
+        getMetadata: (file, mime) => {
+          if (file.endsWith('.gz')) {
+            const originalFile = file.replace('.gz', '')
+            return {
+              ContentType: mime.getType(originalFile),
+              ContentEncoding: 'gzip',
+              CacheControl: "public, max-age=3600"
+            }
+          }
+          return {}
+        }
+      });
+
+      await uploader.upload();
+
+      const { lastCall } = s3.upload as any
+
+      const { Body, ...args} = lastCall.args[0];
+
+      expect(args).to.deep.equal({
+        ACL: 'bucket-owner-full-control',
+        Bucket: 'fake',
+        Key: 'fake/index.html.gz',
+        ContentType: 'text/html',
+        CacheControl: "public, max-age=3600",
+        ContentEncoding: "gzip"
+      });
+
+      (<any>expect(Body).to.be.a).ReadableStream;
+
+      (<any>s3.upload).restore();
+    })
+  })
+
   describe('getCacheControlValue', () => {
     describe('with no config value', () => {
       it('should return default value', () => {

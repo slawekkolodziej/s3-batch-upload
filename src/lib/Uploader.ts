@@ -13,6 +13,12 @@ const mime = require('mime');
 
 export type ContentTypeGetter = (file: string, mime: any) => string;
 
+export type Metadata = {
+  CacheControl?: string;
+  ContentEncoding?: string;
+  ContentType?: string;
+};
+
 export type Options = {
   bucket: string;
   localPath: string;
@@ -26,6 +32,7 @@ export type Options = {
   contentType?: string | ContentTypeGetter | { [key: string]: string };
   s3Client?: S3;
   accessControlLevel?: S3.ObjectCannedACL;
+  getMetadata?: (file: string) => Metadata;
 };
 
 const defaultOptions = {
@@ -133,12 +140,14 @@ export default class Uploader {
   public uploadFile(localFilePath: string, remotePath: string): Promise<string> {
     const body = fs.createReadStream(localFilePath);
     const { dryRun, bucket: Bucket, accessControlLevel: ACL } = this.options;
+
+    const metadata = this.getMetadata(localFilePath);
+
     const params: S3.PutObjectRequest = {
       Bucket,
       Key: remotePath.replace(/\\/g, '/'),
       Body: body,
-      ContentType: this.getContentTypeValue(localFilePath),
-      CacheControl: this.getCacheControlValue(localFilePath),
+      ...metadata,
     };
     if (ACL) {
       params.ACL = ACL;
@@ -155,6 +164,19 @@ export default class Uploader {
         resolve(params.Key);
       }
     });
+  }
+
+  public getMetadata(file: string): Metadata {
+    const { getMetadata } = this.options;
+
+    if (getMetadata) {
+      return getMetadata(file, mime);
+    }
+
+    return {
+      ContentType: this.getContentTypeValue(file),
+      CacheControl: this.getCacheControlValue(file),
+    };
   }
 
   /**
